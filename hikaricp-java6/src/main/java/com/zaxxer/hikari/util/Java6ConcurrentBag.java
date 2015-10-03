@@ -45,7 +45,7 @@ import com.zaxxer.hikari.pool.PoolBagEntry;
  *
  * @param <T> the templated type to store in the bag
  */
-public final class Java6ConcurrentBag extends ConcurrentBag<PoolBagEntry>
+public final class Java6ConcurrentBag extends FastConcurrentBag<PoolBagEntry>
 {
    public Java6ConcurrentBag(IBagStateListener listener)
    {

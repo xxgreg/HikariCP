@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.util.ConcurrentBag;
 import com.zaxxer.hikari.util.IBagStateListener;
-import com.zaxxer.hikari.util.Java6ConcurrentBag;
 
 /**
  * This is the primary connection pool class that provides the basic
@@ -189,7 +188,7 @@ public final class HikariPool extends BaseHikariPool
    @Override
    protected ConcurrentBag<PoolBagEntry> createConcurrentBag(IBagStateListener listener)
    {
-      return new Java6ConcurrentBag(listener);
+      return new ConcurrentBag<PoolBagEntry>(listener);
    }
 
    // ***********************************************************************

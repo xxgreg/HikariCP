@@ -30,8 +30,8 @@ import org.junit.Test;
 
 import com.zaxxer.hikari.pool.HikariPool;
 import com.zaxxer.hikari.pool.PoolBagEntry;
-import com.zaxxer.hikari.util.ConcurrentBag;
 import com.zaxxer.hikari.util.IConcurrentBagEntry;
+import com.zaxxer.hikari.util.FastConcurrentBag;
 import com.zaxxer.hikari.util.Java8ConcurrentBag;
 
 /**
@@ -64,7 +64,7 @@ public class TestConcurrentBag
    @Test
    public void testConcurrentBag() throws InterruptedException
    {
-      ConcurrentBag<PoolBagEntry> bag = new Java8ConcurrentBag(null);
+      FastConcurrentBag<PoolBagEntry> bag = new FastConcurrentBag(null);
       Assert.assertEquals(0, bag.values(8).size());
 
       HikariPool pool = TestElf.getPool(ds);
@@ -114,12 +114,12 @@ public class TestConcurrentBag
    @Test
    public void testConcurrentBag2() throws InterruptedException
    {
-      ConcurrentBag<PoolBagEntry> bag = new FauxJava6ConcurrentBag();
+      FastConcurrentBag<PoolBagEntry> bag = new FauxJava6ConcurrentBag();
       Assert.assertEquals(0, bag.values(IConcurrentBagEntry.STATE_IN_USE).size());
       Assert.assertEquals(0, bag.getCount(IConcurrentBagEntry.STATE_IN_USE));
    }
 
-   private static class FauxJava6ConcurrentBag extends ConcurrentBag<PoolBagEntry>
+   private static class FauxJava6ConcurrentBag extends FastConcurrentBag<PoolBagEntry>
    {
       /**
        * @param listener

@@ -20,6 +20,7 @@ import static com.zaxxer.hikari.util.IConcurrentBagEntry.STATE_NOT_IN_USE;
 import static com.zaxxer.hikari.util.IConcurrentBagEntry.STATE_REMOVED;
 import static com.zaxxer.hikari.util.IConcurrentBagEntry.STATE_RESERVED;
 
+import java.lang.InterruptedException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,6 +77,22 @@ public class ConcurrentBag<T extends IConcurrentBagEntry>
       this.sequence = new AtomicLong(1);
       this.listener = listener;
       this.threadList = new ThreadLocal<ArrayList<WeakReference<IConcurrentBagEntry>>>();
+
+      // Debugging code to log concurrent bag state periodically.
+//      Thread t = new Thread() {
+//         public void run() {
+//            while (true) {
+//               try {
+//                  Thread.sleep(5000);
+//               } catch (InterruptedException ex) {
+//                  LOGGER.error(ex.toString());
+//               }
+//               LOGGER.debug("########################## Dump state ##########################");
+//               dumpState();
+//            }
+//         }
+//      };
+//      t.start();
    }
 
    protected AbstractQueuedLongSynchronizer createQueuedSynchronizer()

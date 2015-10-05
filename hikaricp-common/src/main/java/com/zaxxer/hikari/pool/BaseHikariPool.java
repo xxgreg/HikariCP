@@ -28,6 +28,9 @@ import static com.zaxxer.hikari.util.UtilityElf.getTransactionIsolation;
 import static com.zaxxer.hikari.util.UtilityElf.quietlySleep;
 import static com.zaxxer.hikari.util.UtilityElf.setRemoveOnCancelPolicy;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.Exception;
 import java.lang.Throwable;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -197,6 +200,23 @@ public abstract class BaseHikariPool implements HikariPoolMXBean, IBagStateListe
       final long start = System.currentTimeMillis();
       final MetricsContext metricsContext = (isRecordMetrics ? metricsTracker.recordConnectionRequest(start) : MetricsTracker.NO_CONTEXT);
 
+      // Check to make sure that the same thread isn't calling getConnection more than once.
+      for (PoolBagEntry entry : this.connectionBag.values(STATE_IN_USE)) {
+         if (entry.thread == Thread.currentThread()) {
+            LOGGER.error("Thread has obtained multiple connections simultaneously: " + entry.thread.getName());
+
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            entry.trace.printStackTrace(pw);
+            LOGGER.error("Already open connection trace:\n" + sw.toString());
+
+            sw = new StringWriter();
+            pw = new PrintWriter(sw);
+            new Exception().printStackTrace(pw);
+            LOGGER.error("Subsequent open connection trace:\n" + sw.toString());
+         }
+      }
+
       try {
          do {
             final PoolBagEntry bagEntry = connectionBag.borrow(timeout, TimeUnit.MILLISECONDS);
@@ -212,6 +232,8 @@ public abstract class BaseHikariPool implements HikariPoolMXBean, IBagStateListe
             else {
                metricsContext.setConnectionLastOpen(bagEntry, now);
                metricsContext.stop();
+               bagEntry.thread = Thread.currentThread();
+               bagEntry.trace = new Exception("getConnection() trace");
                return ProxyFactory.getProxyConnection((HikariPool) this, bagEntry, leakTask.start(bagEntry));
             }
          }
@@ -248,6 +270,21 @@ public abstract class BaseHikariPool implements HikariPoolMXBean, IBagStateListe
          closeConnection(bagEntry, "(connection broken or evicted)");
       }
       else {
+         if (bagEntry != null && bagEntry.thread != Thread.currentThread()) {
+
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            if (bagEntry.trace != null) bagEntry.trace.printStackTrace(pw);
+            String trace = sw.toString();
+
+            LOGGER.error("Connection was closed() on a separate thread from where it was obtained via getConnection(). "
+                    + " Thread: " + (bagEntry.thread == null ? "null" : bagEntry.thread.toString())
+                    + " Trace: " + trace);
+         }
+
+         bagEntry.thread = null;
+         bagEntry.trace = null;
+
          connectionBag.requite(bagEntry);
       }
    }
@@ -585,6 +622,7 @@ public abstract class BaseHikariPool implements HikariPoolMXBean, IBagStateListe
    public final void logPoolState(String... prefix)
    {
       if (LOGGER.isDebugEnabled()) {
+         this.connectionBag.dumpState();
          LOGGER.debug("{}pool stats {} (total={}, inUse={}, avail={}, waiting={})",
                       (prefix.length > 0 ? prefix[0] : ""), configuration.getPoolName(),
                       getTotalConnections(), getActiveConnections(), getIdleConnections(), getThreadsAwaitingConnection());

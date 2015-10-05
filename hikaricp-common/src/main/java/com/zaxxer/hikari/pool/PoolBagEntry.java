@@ -15,6 +15,8 @@
  */
 package com.zaxxer.hikari.pool;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.sql.Connection;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -36,7 +38,12 @@ public final class PoolBagEntry implements IConcurrentBagEntry
    public long lastOpenTime;
    public volatile boolean evicted;
    public volatile boolean aborted;
-   
+
+   // The thread which called getConnection on this entry.
+   public Thread thread;
+
+   // An exception to capture the stack trace of where getConnection was called.
+   public Exception trace;
 
    private volatile ScheduledFuture<?> endOfLife;
 
@@ -80,10 +87,17 @@ public final class PoolBagEntry implements IConcurrentBagEntry
    @Override
    public String toString()
    {
+      StringWriter sw = new StringWriter();
+      PrintWriter pw = new PrintWriter(sw);
+      if (trace != null) trace.printStackTrace(pw);
+      String t = sw.toString();
+
       return "Connection......" + connection + "\n"
            + "  Last  access.." + lastAccess + "\n"
            + "  Last open....." + lastOpenTime + "\n"
-           + "  State........." + stateToString();
+           + "  State........." + stateToString() + "\n"
+           + "  Thread........" + (thread == null ? "null" : thread.toString()) + "\n"
+           + "  Trace........" + t + "\n";
    }
 
    private String stateToString()
